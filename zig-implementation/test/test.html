@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Trad</title>
+</head>
+<body>
+
+    <script>
+function runBinary(compiledSource) {
+    let memory = null;
+    const importObject = {
+        env: {
+            stdio(id, addr, len) {
+                let buff = memory.buffer.slice(addr, addr + len);
+                let decoder = new TextDecoder();
+
+                switch (id) {
+                    case 1: {
+                        // standard output
+                        console.log(decoder.decode(buff));
+                        break;
+                    }
+                }
+            }
+        },
+    };
+
+    // run binary
+    const wasm = new WebAssembly.Module(compiledSource);
+    const wasmInstance = new WebAssembly.Instance(wasm, importObject);
+    memory = wasmInstance.exports.memory ?? null;
+    const start = performance.now();
+    wasmInstance.exports._start();
+    const end = performance.now();
+    console.log(end - start);
+}
+
+/*
+    webpage must be served from web server for this to work.
+    Gosh, I hate CORS
+*/
+fetch("/wasm-out.wasm")
+    .then(res => res.arrayBuffer())
+    .then(runBinary)
+    </script>
+    
+</body>
+</html>

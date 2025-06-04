@@ -1,0 +1,54 @@
+var a = "global a";
+var b = "global b";
+var c = "global c";
+{
+  var a = "outer a";
+  var b = "outer b";
+  {
+    var a = "inner a";
+    print a;
+    print b;
+    print c;
+  }
+  print a;
+  print b;
+  print c;
+}
+print a;
+print b;
+print c;
+
+
+var test = 1 * -8 + 2 * 3
+print test
+print "true" + "false"
+print 1 + 2
+
+
+var a = 1;
+{
+  var a = a + 2;
+  print "A: "
+  print a;
+}
+
+
+// No initializers.
+var a;
+var b;
+a = "assigned";
+print a; // OK, was assigned first.
+// print b; // Error!
+
+if (true || false) {
+    print "should print"
+}
+if (false && true) {
+    print "should NOT print"
+}
+if true && false {
+    print "should NOT print"
+}
+
+print null || "this line prints true"
+print null ?? "should print 2"

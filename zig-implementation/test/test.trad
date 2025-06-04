@@ -1,0 +1,12 @@
+fn square(a: int) int {
+    return a * a
+}
+
+const start: int = millis()
+
+for (var i = 0; i < 10; i++) {
+    println(i + ": " + square(i))
+}
+
+const end = millis()
+println("executed in " + (end - start) + " milliseconds")

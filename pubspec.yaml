@@ -1,0 +1,14 @@
+name: jiglang
+description: Javascript + Zig language
+version: 0.0.1
+repository: https://github.com/vExcess/jig-lang
+
+environment:
+  sdk: ^3.5.4
+
+# Add regular dependencies here.
+dependencies:
+
+dev_dependencies:
+  lints: ^4.0.0
+  test: ^1.24.0
