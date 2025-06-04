@@ -206,16 +206,16 @@ class Interpreter {
                     return IValue(IType.Double, (left.value as double) * (right.value as double));
                 case TokenType.GREATER:
                     checkNumberOperands(expr.operator, left, right);
-                    return IValue(IType.Double, (left.value as double) > (right.value as double));
+                    return IValue(IType.Bool, (left.value as double) > (right.value as double));
                 case TokenType.GREATER_EQUAL:
                     checkNumberOperands(expr.operator, left, right);
-                    return IValue(IType.Double, (left.value as double) >= (right.value as double));
+                    return IValue(IType.Bool, (left.value as double) >= (right.value as double));
                 case TokenType.LESS:
                     checkNumberOperands(expr.operator, left, right);
-                    return IValue(IType.Double, (left.value as double) < (right.value as double));
+                    return IValue(IType.Bool, (left.value as double) < (right.value as double));
                 case TokenType.LESS_EQUAL:
                     checkNumberOperands(expr.operator, left, right);
-                    return IValue(IType.Double, (left.value as double) <= (right.value as double));
+                    return IValue(IType.Bool, (left.value as double) <= (right.value as double));
                 case TokenType.BANG_EQUAL:
                     return IValue(IType.Bool, !isEqual(left, right));
                 case TokenType.EQUAL_EQUAL:

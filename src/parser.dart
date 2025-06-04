@@ -164,9 +164,42 @@ class Parser {
             final usesParenthesis = match([TokenType.PAREN_LEFT]);
             Expr condition = expression();
             if (usesParenthesis) {
-                consume(TokenType.PAREN_RIGHT, "Expected ')' after if condition."); 
+                consume(TokenType.PAREN_RIGHT, "Expected ')' after while condition."); 
             }
             
+            return new WhileStmt(condition, statement());
+        }
+
+        if (match([TokenType.FOR])) {
+            final usesParenthesis = match([TokenType.PAREN_LEFT]);
+            Stmt? initializer;
+            Expr? condition;
+            Expr? increment;
+            if (!match([TokenType.SEMICOLON])) {
+                initializer = statement();
+                consume(TokenType.SEMICOLON, "Expected ';' after for initializer."); 
+            }
+            if (!match([TokenType.SEMICOLON])) {
+                condition = expression();
+                consume(TokenType.SEMICOLON, "Expected ';' after for condition."); 
+            }
+            if (!check(TokenType.SEMICOLON)) {
+                increment = expression();
+            }
+            if (usesParenthesis) {
+                consume(TokenType.PAREN_RIGHT, "Expected ')' after for header."); 
+            }
+            Stmt body = statement();
+            if (increment != null) {
+                body = new BlockStmt([body, new ExpressionStmt(increment)]);
+            }
+            if (condition == null) {
+                condition = new LiteralExpr(new Token(TokenType.TRUE, 0, "true", 0));
+            }
+            body = new WhileStmt(condition, body);
+            if (initializer != null) {
+                body = new BlockStmt([initializer, body]);
+            }
             return new WhileStmt(condition, statement());
         }
 

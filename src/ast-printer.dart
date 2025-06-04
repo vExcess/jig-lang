@@ -60,6 +60,11 @@ ${pad} R: ${mapifyExpr(expr.right, depth+1)}}""";
             final elseStr = stmt.elseBranch == null ? "" : "else {\n${pad}${stringifyStmt(stmt.elseBranch!, depth + 1)}\n${pad.substring(4)}}";
             return "IF (${stringifyExpr(stmt.condition)}) ${thenStr} ${elseStr}";
         }
+        if (stmt is WhileStmt) {
+            final pad = "    " * (depth + 1);
+            final bodyStr = "{\n${pad}${stringifyStmt(stmt.body, depth + 1)}\n${pad.substring(4)}}";
+            return "WHILE (${stringifyExpr(stmt.condition)}) ${bodyStr}";
+        }
         throw "Unknown statement type " + stmt.toString();
     }
 
