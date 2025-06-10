@@ -1,6 +1,6 @@
 import 'dart:math' as Math;
 
-import 'Token.dart';
+import '../data/Token.dart';
 
 Map<String, TokenType> ReservedWordTokenType = {
     "fn": TokenType.FN,

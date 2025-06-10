@@ -24,6 +24,15 @@ software with plenty of room for bugs to hide so please report any bugs you find
   - I've tried to write a complete specification, but I'm sure there are details and edge cases I haven't thought about which will result in weird bugs.
   - Jig is theoretically capable of being faster than JavaScript, but time will tell if Jig can beat the insane optimizations Google has put into V8.
 
+## Jig's Bootstrapper in Dart
+Jig is a self hosted language; that is the Jig compiler is written in Jig. However, to run the Jig compiler we need an implementation in 
+an external language. I have chosen to write the bootstrapper implementation of Jig in Dart. The bootstrapper is designed to be as simple
+as possible. Any time there is a simplicity vs performance tradeoff, the bootstrapper chooses simplicity. The bootstrapper is a best effort
+implementation of Jig. Ideally it implements Jig perfectly, but as long as it implements Jig well enough to compile the Jig compiler it's
+good enough.  
+How it works: The Dart interpreter interprets the bootstrapper code which interprets the Jig compiler which compiles the Jig compiler which is
+then able to be used to interpret or compile other Jig source code.
+
 ## Execution
 Jig source code is stored in a ".jig" file. The plan is for Jig to be interpreted, compiled to native code, or compiled to web assembly.
 
@@ -40,22 +49,22 @@ prototype Animal {
 }
 
 prototype LandAnimal extends Animal {
-	new(...args) { Animal(...args) }
-	move() { println("Walk") }
+    new(...args) { Animal(...args) }
+    move() { println("Walk") }
 }
 
 prototype WaterAnimal extends Animal {
-	new(...args) { Animal(...args) }
-	move() { println("Swim") }
+    new(...args) { Animal(...args) }
+    move() { println("Swim") }
 }
 
 prototype Platypus extends WaterAnimal, LandAnimal {
-	new(...args) {
-		WaterAnimal(...args)
-		LandAnimal(...args)
-	}
-	inherit move from LandAnimal as walk
-	inherit move from WaterAnimal as swim
+    new(...args) {
+        WaterAnimal(...args)
+        LandAnimal(...args)
+    }
+    inherit move from LandAnimal as walk
+    inherit move from WaterAnimal as swim
 }
 
 const perry = new Platypus("Perry", 148)
@@ -80,26 +89,26 @@ for (name in characters) {
 // >> eve
 
 for (var i = 0; i < 5; i++) {
-	if i == 2:
+    if i == 2:
         break
-	println(i)
+    println(i)
 }
 // >> 0
 // >> 1
 
 fn random(start, stop) @typeof(start) {
-	return <@typeof(start)> (Math.random() * (stop - start) + start);
+    return <@typeof(start)> (Math.random() * (stop - start) + start);
 }
 
 const num = random(-1000, 1000.0);
 const about: ?String = switch (num) {
-	-Infinity..-1 => {
-		"myValue is negative"
-	},
-	0..5, 6, 7, 8, 9 => 
-		"myValue is a single digit",
-	else =>
-		null
+    -Infinity..-1 => {
+        "myValue is negative"
+    },
+    0..5, 6, 7, 8, 9 => 
+        "myValue is a single digit",
+    else =>
+        null
 };
 
 if (num) { // same as num != null

@@ -40,7 +40,7 @@ var str: String? = null; // can hold strings or null
 Assigning a value to a variable whose's data types don't match causes Jig to attempt to implicitly cast the value and throws a type error if it fails. Although you can't change a variable's data type, you can declare a new variable with the same identifer to shadow the old variable. Shadowing a variable will throw a compiler warning to alert the programmer about potential bugs. Even though it throws a warning the code will still compile and run. Use the `#shadow` flag above the variable declaration to disable the warning.  
 
 ## Scoping
-All variables are block scoped
+All variables are lexically block scoped
 ```ts
 var a = 1;
 var b = 2;
@@ -56,6 +56,18 @@ b // 2
 }
 a // 3
 b // 2
+```
+```ts
+var a = "global";
+{
+    fn showA() {
+        println(a);
+    }
+
+    showA(); // global
+    var a = "block";
+    showA(); // global
+}
 ```
 
 ## Undefined Variables

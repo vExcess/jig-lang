@@ -1,7 +1,7 @@
 import 'dart:io';
-import 'interpreter.dart';
-import 'tokenizer.dart';
-import 'parser.dart';
+import 'interpreter/interpreter.dart';
+import 'parser/tokenizer.dart';
+import 'parser/parser.dart';
 import 'ast-printer.dart';
 
 void main() {

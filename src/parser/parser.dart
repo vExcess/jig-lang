@@ -1,82 +1,6 @@
-import 'Token.dart';
-
-class Expr {}
-
-class BinaryExpr extends Expr {
-    Expr left;
-    Token operator;
-    Expr right;
-    BinaryExpr(this.left, this.operator, this.right);
-}
-
-class GroupingExpr extends Expr {
-    Expr expression;
-    GroupingExpr(this.expression);
-}
-
-class UnaryExpr extends Expr {
-    Token operator;
-    Expr right;
-    UnaryExpr(this.operator, this.right);
-}
-
-class LiteralExpr extends Expr {
-    Token token;
-    LiteralExpr(this.token);
-}
-
-class VariableExpr extends Expr {
-    Token nameToken;
-    VariableExpr(this.nameToken);
-}
-
-class AssignmentExpr extends Expr {
-    Token nameToken; 
-    Expr expr;
-    AssignmentExpr(this.nameToken, this.expr);
-}
-
-enum StmtType {
-    EXPRESSION,
-    PRINT
-}
-
-class Stmt {}
-
-class ExpressionStmt extends Stmt {
-    Expr expr;
-    ExpressionStmt(this.expr);
-}
-
-class BlockStmt extends Stmt {
-    List<Stmt> stmts;
-    BlockStmt(this.stmts);
-}
-
-class PrintStmt extends Stmt {
-    Expr expr;
-    PrintStmt(this.expr);
-}
-
-class VariableStmt extends Stmt {
-    TokenType varType;
-    Token name;
-    Expr? expr;
-    VariableStmt(this.varType, this.name, this.expr);
-}
-
-class IfStmt extends Stmt {
-    Expr condition;
-    Stmt thenBranch;
-    Stmt? elseBranch;
-    IfStmt(this.condition, this.thenBranch, this.elseBranch);
-}
-
-class WhileStmt extends Stmt {
-    Expr condition;
-    Stmt body;
-    WhileStmt(this.condition, this.body);
-}
+import '../data/Token.dart';
+import '../data/Expr.dart';
+import '../data/Stmt.dart';
 
 class Parser {
     List<Token> tokens;
@@ -133,9 +57,15 @@ class Parser {
         throw (peek(), message);
     }
 
+    void error(Token tok, String msg) {
+        print(tok);
+        print(msg);
+    }
+
     // ===== =====
 
     Stmt statement() {
+        // print("statement " + getLexemes());
         if (match([TokenType.PRINT])) {
             return new PrintStmt(expression());
         }
@@ -193,14 +123,15 @@ class Parser {
             if (increment != null) {
                 body = new BlockStmt([body, new ExpressionStmt(increment)]);
             }
+
             if (condition == null) {
                 condition = new LiteralExpr(new Token(TokenType.TRUE, 0, "true", 0));
             }
-            body = new WhileStmt(condition, body);
+            Stmt whileLoop = new WhileStmt(condition, body);
             if (initializer != null) {
-                body = new BlockStmt([initializer, body]);
+                whileLoop = new BlockStmt([initializer, whileLoop]);
             }
-            return new WhileStmt(condition, statement());
+            return whileLoop;
         }
 
         if (match([TokenType.VAR, TokenType.LET, TokenType.CONST])) {
@@ -213,6 +144,15 @@ class Parser {
             }
 
             return new VariableStmt(varType, name, initializer);
+        }
+
+        if (match([TokenType.RETURN])) {
+            Token keyword = previous();
+            Expr? value = null;
+            if (!check(TokenType.SEMICOLON) && !check(TokenType.BRACE_RIGHT)) {
+                value = expression();
+            }
+            return new ReturnStmt(value, keyword);
         }
 
         return new ExpressionStmt(expression());
@@ -231,6 +171,7 @@ class Parser {
     }
 
     Expr expression() {
+        // print("expression " + getLexemes());
         final expr = operatorPrec0();
 
         if (match([TokenType.EQUAL])) {
@@ -355,6 +296,7 @@ class Parser {
         }
         return expr;
     }
+    
     Expr unary() {
         // print("unary " + getLexemes());
         if (match([TokenType.BANG, TokenType.MINUS, TokenType.CAST, TokenType.PLUS_PLUS, TokenType.MINUS_MINUS, TokenType.TILDE, TokenType.PLUS, TokenType.AWAIT])) {
@@ -362,8 +304,35 @@ class Parser {
             Expr right = unary();
             return new UnaryExpr(operator, right);
         }
-        return primary();
+        return call();
     }
+    
+    Expr call() {
+        Expr expr = primary();
+
+        while (true) { 
+            if (match([TokenType.PAREN_LEFT])) {
+                List<Expr> arguments = [];
+                if (!check(TokenType.PAREN_RIGHT)) {
+                    do {
+                        // limit is 254 to account for "this" argument
+                        if (arguments.length >= 255) {
+                            error(peek(), "Can't have more than 255 arguments.");
+                        }
+                        arguments.add(expression());
+                    } while (match([TokenType.COMMA]));
+                }
+
+                Token paren = consume(TokenType.PAREN_RIGHT, "Expect ')' after arguments.");
+                expr = new CallExpr(expr, arguments, {}, paren);
+            } else {
+                break;
+            }
+        }
+
+        return expr;
+    }
+
     Expr primary() {
         // print("primary " + getLexemes());
         if (match([TokenType.FALSE, TokenType.TRUE, TokenType.NULL, TokenType.NUMBER, TokenType.STRING])) {
@@ -378,6 +347,30 @@ class Parser {
             Expr expr = expression();
             consume(TokenType.PAREN_RIGHT, "Expect ')' after expression.");
             return new GroupingExpr(expr);
+        }
+
+        print("expression1 " + getLexemes());
+        if (match([TokenType.FN])) {
+            print("expression2 " + getLexemes());
+            String kind = "function";
+            Token name = consume(TokenType.IDENTIFIER, "Expect ${kind} name.");
+            consume(TokenType.PAREN_LEFT, "Expect '(' after " + kind + " name.");
+            List<Token> parameters = [];
+            if (!check(TokenType.PAREN_RIGHT)) {
+                do {
+                    // limit is 254 for "this" argument
+                    if (parameters.length >= 255) {
+                        error(peek(), "Can't have more than 255 parameters.");
+                    }
+                    parameters.add(consume(TokenType.IDENTIFIER, "Expect parameter name."));
+                } while (match([TokenType.COMMA]));
+            }
+            consume(TokenType.PAREN_RIGHT, "Expect ')' after parameters.");
+            
+            consume(TokenType.BRACE_LEFT, "Expect '{' before " + kind + " body.");
+            List<Stmt> body = block();
+            return new FunctionExpr(name, parameters, body);
+
         }
 
         throw (peek(), "err in primary");

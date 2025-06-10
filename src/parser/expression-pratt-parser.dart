@@ -1,5 +1,5 @@
-import 'Stack.dart';
-import 'Token.dart';
+import '../lib/Stack.dart';
+import '../data/Token.dart';
 
 class Precedence {
     static int NONE = 0;
@@ -110,7 +110,7 @@ class ExpressionParser {
         }
         prefixRule.call(state);
         
-        while (state.currTok != null && state.currTok.tokType != TokenType.PAREN_RIGHT && precedence <= getRule(state.currTok.tokType)!.precedence) {
+        while (state.currTok.tokType != TokenType.PAREN_RIGHT && precedence <= getRule(state.currTok.tokType)!.precedence) {
             state.advance();
             ParseFn? infixRule = getRule(state.prevTok.tokType)!.infixFn;
             if (infixRule == null) {

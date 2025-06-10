@@ -32,9 +32,12 @@ class Stack<T> {
         }
     }
 
-    T peek() {
-        if (lastUsedIndex >= 0) {
-            return stack[lastUsedIndex]!;
+    T peek([int index=-1]) {
+        if (index == -1) {
+            index = lastUsedIndex;
+        }
+        if (index >= 0 && index <= lastUsedIndex) {
+            return stack[index]!;
         } else {
             throw "stack empty";
         }
@@ -56,5 +59,4 @@ class Stack<T> {
         }
         return out + "}";
     }
-
 }

@@ -1,4 +1,5 @@
-import 'parser.dart';
+import 'data/Expr.dart';
+import 'data/Stmt.dart';
 
 class ASTPrinter {
     String src;
@@ -20,6 +21,17 @@ class ASTPrinter {
         }
         if (expr is AssignmentExpr) {
             return "${expr.nameToken.lexeme} = ${stringifyExpr(expr.expr)}";
+        }
+        if (expr is CallExpr) {
+            return "${stringifyExpr(expr.callee)}(${expr.orderedArguments.map((expr) { return stringifyExpr(expr, depth + 1);}).join(", ")})";
+        }
+        if (expr is GroupingExpr) {
+            return "(${stringifyExpr(expr.expression)})";
+        }
+        if (expr is FunctionExpr) {
+            final pad = "    " * (depth + 1);
+            final bodyStr = "{\n${pad}${expr.body.map((stmt) { return stringifyStmt(stmt, depth + 1);}).join("\n${pad}")}\n${pad.substring(4 * (depth))}}";
+            return "FN (${expr.name}) ${bodyStr}";
         }
         throw "Unknown expression type " + expr.toString();
     }
@@ -48,7 +60,7 @@ ${pad} R: ${mapifyExpr(expr.right, depth+1)}}""";
             return "print(${stringifyExpr(stmt.expr)})";
         }
         if (stmt is VariableStmt) {
-            return "${stmt.varType} ${stmt.name} = ${stmt.expr == null ? "undefined" : stringifyExpr(stmt.expr!)}";
+            return "DECL ${stmt.varType} ${stmt.name} = ${stmt.expr == null ? "undefined" : stringifyExpr(stmt.expr!)}";
         }
         if (stmt is BlockStmt) {
             final pad = "    " * (depth + 1);
@@ -65,7 +77,10 @@ ${pad} R: ${mapifyExpr(expr.right, depth+1)}}""";
             final bodyStr = "{\n${pad}${stringifyStmt(stmt.body, depth + 1)}\n${pad.substring(4)}}";
             return "WHILE (${stringifyExpr(stmt.condition)}) ${bodyStr}";
         }
-        throw "Unknown statement type " + stmt.toString();
+        if (stmt is ReturnStmt) {
+            return "RETURN ${stmt.value == null ? "" : stringifyExpr(stmt.value!)}";
+        }
+        throw "UNKNOWN STATEMENT TYPE " + stmt.toString();
     }
 
     void printAST(List<Stmt> statements) {
