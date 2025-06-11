@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'data/Expr.dart';
 import 'data/Stmt.dart';
 
@@ -20,10 +22,13 @@ class ASTPrinter {
             return "${expr.nameToken.lexeme}";
         }
         if (expr is AssignmentExpr) {
-            return "${expr.nameToken.lexeme} = ${stringifyExpr(expr.expr)}";
+            return "${stringifyExpr(expr.left)} = ${stringifyExpr(expr.right)}";
         }
         if (expr is CallExpr) {
             return "${stringifyExpr(expr.callee)}(${expr.orderedArguments.map((expr) { return stringifyExpr(expr, depth + 1);}).join(", ")})";
+        }
+        if (expr is MemberExpr) {
+            return "${stringifyExpr(expr.object)}.${expr.propertyToken.lexeme}";
         }
         if (expr is GroupingExpr) {
             return "(${stringifyExpr(expr.expression)})";
@@ -79,6 +84,11 @@ ${pad} R: ${mapifyExpr(expr.right, depth+1)}}""";
         }
         if (stmt is ReturnStmt) {
             return "RETURN ${stmt.value == null ? "" : stringifyExpr(stmt.value!)}";
+        }
+        if (stmt is ClassStmt) {
+            final pad = "    " * (depth + 1);
+            // final bodyStr = "{\n${pad}${expr.body.map((stmt) { return stringifyStmt(stmt, depth + 1);}).join("\n${pad}")}\n${pad.substring(4 * (depth))}}";
+            return "CLASS (${stmt.name}) ";
         }
         throw "UNKNOWN STATEMENT TYPE " + stmt.toString();
     }

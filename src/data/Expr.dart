@@ -31,10 +31,15 @@ class VariableExpr extends Expr {
     VariableExpr(this.nameToken);
 }
 
+class ThisExpr extends Expr {
+    Token token;
+    ThisExpr(this.token);
+}
+
 class AssignmentExpr extends Expr {
-    Token nameToken; 
-    Expr expr;
-    AssignmentExpr(this.nameToken, this.expr);
+    Expr left; 
+    Expr right;
+    AssignmentExpr(this.left, this.right);
 }
 
 class CallExpr extends Expr {
@@ -50,4 +55,10 @@ class FunctionExpr extends Expr {
     List<Token> params;
     List<Stmt> body;
     FunctionExpr(this.name, this.params, this.body);
+}
+
+class MemberExpr extends Expr {
+    Expr object;
+    Token propertyToken;
+    MemberExpr(this.object, this.propertyToken);
 }

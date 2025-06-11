@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import '../data/Token.dart';
 import '../data/Expr.dart';
 import '../data/Stmt.dart';
@@ -155,6 +157,20 @@ class Parser {
             return new ReturnStmt(value, keyword);
         }
 
+        if (match([TokenType.CLASS])) {
+            Token name = consume(TokenType.IDENTIFIER, "Expect class name.");
+            consume(TokenType.BRACE_LEFT, "Expect '{' before class body.");
+
+            List<FunctionExpr> methods = [];
+            while (!check(TokenType.BRACE_RIGHT) && !isAtEnd()) {
+                methods.add(func("method"));
+            }
+
+            consume(TokenType.BRACE_RIGHT, "Expect '}' after class body.");
+
+            return new ClassStmt(name, methods);
+        }
+
         return new ExpressionStmt(expression());
     }
 
@@ -176,9 +192,8 @@ class Parser {
 
         if (match([TokenType.EQUAL])) {
             final val = expression();
-            if (expr is VariableExpr) {
-                Token name = expr.nameToken;
-                return new AssignmentExpr(name, val);
+            if (expr is VariableExpr || expr is MemberExpr) {
+                return new AssignmentExpr(expr, val);
             }
             throw "Invalid assignment target.";
         }
@@ -304,10 +319,10 @@ class Parser {
             Expr right = unary();
             return new UnaryExpr(operator, right);
         }
-        return call();
+        return callOrMember();
     }
     
-    Expr call() {
+    Expr callOrMember() {
         Expr expr = primary();
 
         while (true) { 
@@ -325,6 +340,9 @@ class Parser {
 
                 Token paren = consume(TokenType.PAREN_RIGHT, "Expect ')' after arguments.");
                 expr = new CallExpr(expr, arguments, {}, paren);
+            } else if (match([TokenType.DOT])) {
+                Token name = consume(TokenType.IDENTIFIER, "Expect property name after '.'.");
+                expr = new MemberExpr(expr, name);
             } else {
                 break;
             }
@@ -343,37 +361,54 @@ class Parser {
             return new VariableExpr(previous());
         }
 
+        if (match([TokenType.THIS])) {
+            return new ThisExpr(previous());
+        }
+
         if (match([TokenType.PAREN_LEFT])) {
             Expr expr = expression();
             consume(TokenType.PAREN_RIGHT, "Expect ')' after expression.");
             return new GroupingExpr(expr);
         }
 
-        print("expression1 " + getLexemes());
-        if (match([TokenType.FN])) {
-            print("expression2 " + getLexemes());
-            String kind = "function";
-            Token name = consume(TokenType.IDENTIFIER, "Expect ${kind} name.");
-            consume(TokenType.PAREN_LEFT, "Expect '(' after " + kind + " name.");
-            List<Token> parameters = [];
-            if (!check(TokenType.PAREN_RIGHT)) {
-                do {
-                    // limit is 254 for "this" argument
-                    if (parameters.length >= 255) {
-                        error(peek(), "Can't have more than 255 parameters.");
-                    }
-                    parameters.add(consume(TokenType.IDENTIFIER, "Expect parameter name."));
-                } while (match([TokenType.COMMA]));
-            }
-            consume(TokenType.PAREN_RIGHT, "Expect ')' after parameters.");
-            
-            consume(TokenType.BRACE_LEFT, "Expect '{' before " + kind + " body.");
-            List<Stmt> body = block();
-            return new FunctionExpr(name, parameters, body);
+        if (check(TokenType.NEW)) {
+            final newToken = advance();
+            Expr constructorExpr = primary();
+            return new MemberExpr(constructorExpr, newToken);
+        }
 
+        if (match([TokenType.FN])) {
+            return func("function");
         }
 
         throw (peek(), "err in primary");
+    }
+
+    FunctionExpr func(String kind) {
+        Token name;
+        if (kind == "method" && check(TokenType.NEW)) {
+            name = advance();
+            name.tokType = TokenType.IDENTIFIER;
+        } else {
+            name = consume(TokenType.IDENTIFIER, "Expect ${kind} name.");
+        }
+        
+        consume(TokenType.PAREN_LEFT, "Expect '(' after " + kind + " name.");
+        List<Token> parameters = [];
+        if (!check(TokenType.PAREN_RIGHT)) {
+            do {
+                // limit is 254 for "this" argument
+                if (parameters.length >= 255) {
+                    error(peek(), "Can't have more than 255 parameters.");
+                }
+                parameters.add(consume(TokenType.IDENTIFIER, "Expect parameter name."));
+            } while (match([TokenType.COMMA]));
+        }
+        consume(TokenType.PAREN_RIGHT, "Expect ')' after parameters.");
+        
+        consume(TokenType.BRACE_LEFT, "Expect '{' before " + kind + " body.");
+        List<Stmt> body = block();
+        return new FunctionExpr(name, parameters, body);
     }
 
     String getLexemes() {

@@ -26,9 +26,9 @@ a // 0
 b // "bar"
 c // 2
 ```
-Enums can be nested in prototypes
+Enums can be nested in classes
 ```ts
-prototype Foo {
+class Foo {
     static enum { a, b, c }
     enum { d, e, f }
     new() {

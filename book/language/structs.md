@@ -33,9 +33,9 @@ struct typedStruct {
 var vec = typedStruct(1, 2, 3);
 vec.x // 1
 ```
-Structs can be nested in prototypes
+Structs can be nested in classes
 ```ts
-prototype Foo {
+class Foo {
     struct Bar {
         a;
         b;

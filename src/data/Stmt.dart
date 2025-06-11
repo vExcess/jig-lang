@@ -48,3 +48,9 @@ class ReturnStmt extends Stmt {
     Token token;
     ReturnStmt(this.value, this.token);
 }
+
+class ClassStmt extends Stmt {
+    Token name;
+    List<FunctionExpr> methods;
+    ClassStmt(this.name, this.methods);
+}

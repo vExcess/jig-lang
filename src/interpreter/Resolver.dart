@@ -1,4 +1,9 @@
-import 'dart:math';
+/*
+
+    Important: Each new scope created by the resolver needs a new
+    environment created for it in the interpreter
+
+*/
 
 import '../data/Token.dart';
 import '../data/Expr.dart';
@@ -7,7 +12,8 @@ import '../lib/Stack.dart';
 
 enum FunctionType {
     NONE,
-    FUNCTION
+    FUNCTION,
+    METHOD
 }
 
 class Resolver {
@@ -108,6 +114,21 @@ class Resolver {
                 resolveExpr(stmt.value!);
             }
         }
+
+        if (stmt is ClassStmt) {
+            declare(stmt.name);
+            define(stmt.name);
+
+            beginScope();
+            scopes.peek()["this"] = true;
+
+            for (FunctionExpr method in stmt.methods) {
+                FunctionType declaration = FunctionType.METHOD;
+                resolveFunction(method, declaration); 
+            }
+
+            endScope();
+        }
     }
 
     void resolveExpr(Expr expr) {
@@ -131,6 +152,14 @@ class Resolver {
             }
         }
 
+        if (expr is ThisExpr) {
+            resolveLocal(expr, expr.token);
+        }
+
+        if (expr is MemberExpr) {
+            resolveExpr(expr.object);
+        }
+
         if (expr is UnaryExpr) {
             resolveExpr(expr.right);
         }
@@ -140,8 +169,13 @@ class Resolver {
         }
 
         if (expr is AssignmentExpr) {
-            resolveExpr(expr.expr);
-            resolveLocal(expr, expr.nameToken);
+            resolveExpr(expr.right);
+            final left = expr.left;
+            if (left is VariableExpr) {
+                resolveLocal(expr, left.nameToken);
+            } else {
+                resolveExpr(left);
+            }
         }
 
         if (expr is FunctionExpr) {

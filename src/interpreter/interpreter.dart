@@ -10,11 +10,13 @@ dynamic LOG(Object? data) {
 
 enum IType {
     Bool,
-    String,
     Int,
     Double,
     Null,
-    Function
+    Object,
+    String,
+    Function,
+    Class
 }
 
 class IValue {
@@ -35,6 +37,33 @@ class IValue {
         }
 
         return value.toString();
+    }
+}
+
+class JigObject {
+    JigClass jClass;
+    Map<String, IValue> fields = {};
+
+    JigObject(this.jClass);
+
+    IValue get(String key) {
+        if (fields.containsKey(key)) {
+            return fields[key]!;
+        }
+
+        if (jClass.methods.containsKey(key)) {
+            return new IValue(IType.Function, jClass.methods[key]!);
+        }
+
+        throw "Undefined property '${key}'.";
+    }
+
+    void set(String name, IValue value) {
+        fields[name] = value;
+    }
+
+    String toString() {
+        return "Instance of ${jClass}";
     }
 }
 
@@ -60,11 +89,15 @@ class JigFunction {
                     arguments[i]
                 );
             }
-
             IValue? res = interpreter.executeInNewScope(jigFn!.body, environment);
             if (res != null) {
                 return res;
             }
+            
+            if (jigFn!.name.lexeme == "new") {
+
+            }
+
             return new IValue(IType.Null, 0);
         } else {
             return nativeFn!(interpreter, arguments);
@@ -73,10 +106,29 @@ class JigFunction {
 
     String toString() {
         if (jigFn != null) {
-            return "<fn ${jigFn!.name}>";
+            return "<fn ${jigFn!.name.lexeme}()>";
         } else {
-            return "<native code>";
+            return "<fn native code>";
         }
+    }
+}
+
+class JigClass {
+    String name;
+    Map<String, JigFunction> methods;
+
+    JigClass(this.name, this.methods);
+    
+    JigFunction getMethod(String key) {
+        if (methods.containsKey(key)) {
+            return methods[key]!;
+        }
+
+        throw "Undefined property '${key}'.";
+    }
+
+    String toString() {
+        return "<class ${name}>";
     }
 }
 
@@ -176,6 +228,16 @@ class Interpreter {
             return func.call(this, arguments);
         }
 
+        if (expr is MemberExpr) {
+            IValue object = evaluate(expr.object);
+            if (object.type == IType.Object) {
+                return (object as JigObject).get(expr.propertyToken.lexeme);
+            } else if (object.type == IType.Class) {
+                return new IValue(IType.Function, (object.value as JigClass).getMethod(expr.propertyToken.lexeme));
+            }
+            throw "Only objects have properties ${expr}.";
+        }
+
         if (expr is UnaryExpr) {
             IValue right = evaluate(expr.right);
 
@@ -200,7 +262,7 @@ class Interpreter {
                 for (int i = 0; i < distance; i++) {
                     environment = environment.parent!; 
                 }
-                return environment.values[varName]!;
+                return environment.get(varName)!;
             } else {
                 final val = globals.get(varName);
                 if (val == null) {
@@ -211,22 +273,31 @@ class Interpreter {
         }
 
         if (expr is AssignmentExpr) {
-            IValue value = evaluate(expr.expr);
-            environment.set(expr.nameToken.lexeme, value);
+            final left = expr.left;
+            final right = expr.right;
 
-            final varName = expr.nameToken.lexeme;
-            int? distance = locals[expr];
-            if (distance != null) {
-                Environment environment = this.environment;
-                for (int i = 0; i < distance; i++) {
-                    environment = environment.parent!; 
+            IValue value = evaluate(expr.right);
+
+            if (left is VariableExpr) {
+                final varName = left.nameToken.lexeme;
+                int? distance = locals[expr];
+                if (distance != null) {
+                    Environment environment = this.environment;
+                    for (int i = 0; i < distance; i++) {
+                        environment = environment.parent!; 
+                    }
+                    environment.values[varName] = value;
+                } else {
+                    globals.set(varName, value);
                 }
-                environment.values[varName] = value;
-                return value;
-            } else {
-                globals.set(varName, value);
+            } else if (left is MemberExpr) {
+                IValue object = evaluate(expr.left);
+                if (object.type != IType.Object) {
+                    // TODO: implement class modifying
+                    throw "Only instances have fields. ${expr}";
+                }
+                (object.value as JigObject).set(left.propertyToken.lexeme, value);
             }
-
 
             return value;
         }
@@ -256,7 +327,7 @@ class Interpreter {
         return null;
     }
 
-    IValue? executeStatement(Stmt stmt){
+    IValue? executeStatement(Stmt stmt) {
         if (stmt is ExpressionStmt) {
             if (stmt.expr is FunctionExpr) {
                 final expr = stmt.expr as FunctionExpr;
@@ -322,6 +393,18 @@ class Interpreter {
                 return IValue(IType.Null, 0);
             }
         }
+
+        if (stmt is ClassStmt) {
+            environment.define(stmt.name.lexeme, null);
+
+            Map<String, JigFunction> methods = {};
+            for (FunctionExpr expr in stmt.methods) {
+                methods[expr.name.lexeme] = new JigFunction(expr, environment);
+            }
+
+            final jClass = new JigClass(stmt.name.lexeme, methods);
+            environment.set(stmt.name.lexeme, new IValue(IType.Class, jClass));
+        } 
 
         return null;
     }

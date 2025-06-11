@@ -86,6 +86,7 @@ class Tokenizer {
     int lexemeStart = 0;
     int current = 0;
     int line = 1;
+    Token? previous;
 
     Tokenizer(this.source);
 
@@ -263,6 +264,9 @@ class Tokenizer {
                     return TokenType.NULL;
                 }
                 if (this.checkKeyword(1, "ew")) {
+                    if (previous != null && previous!.tokType == TokenType.DOT) {
+                        return TokenType.IDENTIFIER;
+                    }
                     return TokenType.NEW;
                 }
             }
@@ -423,9 +427,11 @@ class Tokenizer {
     }
 
     List<Token> parseAll() {
+        this.previous = null;
         List<Token> tokens = [];
         while (true) {
             final tok = this.scanToken();
+            this.previous = tok;
             tokens.add(tok);
             if (tok.tokType == TokenType.COMPILER_ERROR || tok.tokType == TokenType.EOF) 
                 break;

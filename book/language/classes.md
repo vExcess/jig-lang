@@ -1,34 +1,41 @@
-# Prototypes
-Prototypes are created like so:
+# Classes
+Classes are created like so:
 ```ts
-prototype Animal {
+class Animal {
+    static const needsOxygen = true; // static makes a property/method belong to class.static rather than class
+
     age: i32 = 0; // variable declarations
     private name; // private variables
-    static const needsOxygen = true; // static makes a property/method belong to the prototype rather than an instance of the prototype
+    
     new(n: String) { // constructor
         name = n; // define object properties
         getName(); // call methods
         this.getName(); // properties/methods can also be accessed using the `this` keyword
     }
+    
     getName() String { // methods
         return this.name;
     }
+
     free() {
         // destructor
     }
 }
 ```
 
+## Note on private
+The `private` keyword actually doesn't do anything at runtime. It exists purely for documentation and linting purposes.
+
 ## Constructor and Destructor
-The constructor of a prototype is written as a method using `new` as an identifier. The destructor of a prototype is written using `free` as an identifier. Using the `free` keyword like so `free someInstance` on an instance will call the instance's `free` method if it exists and then deallocate the object from memory. When the garbage collector deallocates an object its free method is not called. Calling a object's free method does not deallocate the object from memory. Calling `myPrototype().new()` is the same as `new myPrototype()`. By default properties/methods are public, but can be made private using the "private" keyword. You can shorthand initializing properties of the prototype in the constructor by using `this.propertyName` in the parameters of the constructor.
+The constructor of a class is written as a method using `new` as an identifier. The destructor of a class is written using `free` as an identifier. Using the `free` keyword like so `free someInstance` on an instance will call the instance's `free` method if it exists and then deallocate the object from memory. When the garbage collector deallocates an object its free method is not called. Calling a object's free method does not deallocate the object from memory. Calling `myClass().new()` is the same as `new myClass()`. By default properties/methods are public, but can be made private using the `private` keyword. You can shorthand initializing properties of the class in the constructor by using `this.propertyName` in the parameters of the constructor.
 ```ts
-prototype Person {
+class Person {
     name: String;
     new(this.name);
 }
 
 // is same as 
-prototype Person {
+class Person {
     name: String;
     new(name: String) {
         this.name = name;
@@ -37,18 +44,18 @@ prototype Person {
 ```
 
 ## Inheritance
-Multiple inheritance is supported (this is what makes prototypes better than classes). If a prototype has two parent prototypes with the same property/method it will inherit from the last parent. By default all properties of prototypes are `var`. The constructors of the parent prototypes will be available to be called from the prototype's constructor. It is not necessary to call a parent's constructor. If a parent's constructor is not called then the code in the parents constructor is not executed. However, the properties and methods from the parent prototype will still exist on the child instance. Accessing a property that doesn't exist on on Object will throw an error.
+Multiple inheritance is supported. If a class has two parent classes with the same property/method it will inherit from the last parent. By default all properties of classes are `var`. The constructors of the parent classes will be available to be called from the class's constructor. It is not necessary to call a parent's constructor. If a parent's constructor is not called then the code in the parents constructor is not executed. However, the properties and methods from the parent class will still exist on the child instance. Accessing a property that doesn't exist on on Object will throw an error.
 
 Properties of an Object are accessed using the dot operator `.`
 ```ts
-prototype LandAnimal {
+class LandAnimal {
     thing = 0;
     new(num) {
         thing = num;
     }
     move() { println("Walk"); }
 }
-prototype WaterAnimal {
+class WaterAnimal {
     thing = 2;
     new() {
         
@@ -57,19 +64,19 @@ prototype WaterAnimal {
 }
 ```
 ```ts
-prototype Platypus extends LandAnimal, WaterAnimal {
+class Platypus extends LandAnimal, WaterAnimal {
     new() {
-        this.thing // returns 2 because WaterAnimal is the last parent prototype
+        this.thing // returns 2 because WaterAnimal is the last parent class
         super.LandAnimal(1); // calls LandAnimal's constructor
         this.thing // returns 1 because LandAnimal's constructor updated thing
     }
 }
-new Platypus().move(); // prints "Swim" because WaterAnimal is the last prototype Platypus is extended from
+new Platypus().move(); // prints "Swim" because WaterAnimal is the last class Platypus is extended from
 new Platypus().thing // 1
 ```
-Using `inherit … from …` and `inherit … from … as …` you can inherit a property/method from any prototype resulting in very powerful multi inheritance. This can also be used to overwrite the default behavior of inheriting the property/method from the prototype at the end of the extends list.
+Using `inherit … from …` and `inherit … from … as …` you can inherit a property/method from any class resulting in very powerful multi inheritance. This can also be used to overwrite the default behavior of inheriting the property/method from the class at the end of the extends list.
 ```ts
-prototype Platypus extends WaterAnimal, LandAnimal {
+class Platypus extends WaterAnimal, LandAnimal {
     new() {
         super.WaterAnimal(1);
         super.LandAnimal();
@@ -79,7 +86,7 @@ prototype Platypus extends WaterAnimal, LandAnimal {
 new Platypus().move(); // prints "Swim"
 ```
 ```ts
-prototype Platypus extends WaterAnimal, LandAnimal {
+class Platypus extends WaterAnimal, LandAnimal {
     new() {
         super.WaterAnimal(1);
         super.LandAnimal();
@@ -91,28 +98,28 @@ new Platypus().walk(); // prints "Walk"
 new Platypus().swim(); // prints "Swim"
 new Platypus().thing // 1
 ```
-When inheriting multiple properties from one prototype you can use a comma separated list
+When inheriting multiple properties from one class you can use a comma separated list
 ```ts
-prototype Parent {
+class Parent {
     new() {}
     a() {}
     b() {}
     c() {}
     d() {}
 }
-prototype Child {
+class Child {
     new() {}
     // Because we are only using "inherit a, b, c from Parent" only properties a, b, and c are inherited from Parent.
     // Method d is not inherited because we haven't used "extends Parent". We also can NOT call Parent's constructor.
     inherit a, b, c from Parent as x, y, z;
 }
 ```
-A prototype can be created without a constructor. This simply defaults to an empty constructor that accepts no arguments being implicitly created.
+A class can be created without a constructor. This simply defaults to an empty constructor that accepts no arguments being implicitly created.
 
-## Prototypes are NOT Classes
-Unlike classes, methods of prototypes are not bound to an instance of that prototype. This means the following is NOT allowed
+## No tear offs
+Unlike "real" classes, for performance and implementation reasons, methods of Jig classes are not bound to an instance of that classes. This means the following is NOT allowed
 ```ts
-prototype Person {
+class Person {
     name: String;
     new(this.name);
     sayHi() {
@@ -126,7 +133,7 @@ timSayHi(); // prints out "Tim"
 ```
 Instead you must do 
 ```ts
-prototype Person {
+class Person {
     name: String;
     new(this.name);
     sayHi() {
@@ -140,12 +147,12 @@ timSayHi(); // prints out "Tim"
 ```
 
 ## Operator Overloading
-Operator overloading on prototypes is done by adding the operator symbol as the identifier of a method on the prototype. It will accept one value as an argument which will be the value that is being operated on with the instance.
+Operator overloading on classes is done by adding the operator symbol as the identifier of a method on the class. It will accept one value as an argument which will be the value that is being operated on with the instance.
 
 The order in which the operands are operated on does matter. However if the first operand doesn't have any overloaded operators the VM will check for overloaded operators on the second operand before throwing a type error. The operator overloader method has a second parameter that is true if the object is the right operand in the computation.
 
 ```ts
-prototype vec3 {
+class vec3 {
     [x, y, z]: f32;
     new(this.x, this.y, this.z);
 

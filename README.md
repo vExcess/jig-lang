@@ -12,7 +12,11 @@ casting numbers.
 Jig's core philosophy is to cater to multiple programming styles by offering 
 the best of both worlds. It offers static typing and dynamic typing, simplicity 
 and speed, garbage collection and no garbage collection, JIT compilation and AOT 
-compilation, procedural programming and OOP, a class like prototype system, semicolons and no semicolons, and more.
+compilation, procedural programming and OOP, semicolons and no semicolons, and more.
+
+## Learn Jig
+Read the book here:  
+[https://github.com/vExcess/jig-lang/tree/main/book](https://github.com/vExcess/jig-lang/tree/main/book)
 
 ## Feedback Appreciated
 If you find any discrepancies or ambiguous cases in my specification please let
@@ -39,26 +43,26 @@ Jig source code is stored in a ".jig" file. The plan is for Jig to be interprete
 ### Compilation to WebAssembly or Machine Code
 Using the `#aot-compile` compiler flag increases strictness allowing the program to be compiled ahead of time instead of just in time. 
 
-### Example Code
+## Example Code
 Here's so you can get a quick feel for the language syntax without reading the Jig Book
 ```rs
-prototype Animal {
+class Animal {
     name: String,
     age: u32,
     new(this.name, this.age)
 }
 
-prototype LandAnimal extends Animal {
+class LandAnimal extends Animal {
     new(...args) { Animal(...args) }
     move() { println("Walk") }
 }
 
-prototype WaterAnimal extends Animal {
+class WaterAnimal extends Animal {
     new(...args) { Animal(...args) }
     move() { println("Swim") }
 }
 
-prototype Platypus extends WaterAnimal, LandAnimal {
+class Platypus extends WaterAnimal, LandAnimal {
     new(...args) {
         WaterAnimal(...args)
         LandAnimal(...args)

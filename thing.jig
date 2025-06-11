@@ -68,20 +68,20 @@
 // var result = procedure();
 // print result; // ?
 
-fn fib(n) {
-  if (n <= 1) {
-    return n;
-  }
-  var temp = n - 1;
-  return fib(n - 2) + fib(temp);
-}
-var start = millis()
-for (var i = 0; i < 30; i = i + 1) {
-  print fib(i);
-}
-var end = millis()
-print "TIME:"
-print end - start
+// fn fib(n) {
+//   if (n <= 1) {
+//     return n;
+//   }
+//   var temp = n - 1;
+//   return fib(n - 2) + fib(temp);
+// }
+// var start = millis()
+// for (var i = 0; i < 30; i = i + 1) {
+//   print fib(i);
+// }
+// var end = millis()
+// print "TIME:"
+// print end - start
 
 // fn makeCounter() {
 //   var i = 0;
@@ -119,3 +119,36 @@ print end - start
 //   var a = "block";
 //   showA();
 // }
+
+class Breakfast {
+  new() {
+    print("hello")
+  }
+
+  cook() {
+    print "Eggs a-fryin'!";
+  }
+
+  // serve(who) {
+  //   print "Enjoy your breakfast, " + who + ".";
+  // }
+}
+print Breakfast
+print Breakfast.new
+var foo = new Breakfast()
+// print(foo)
+foo.cook()
+// foo.test1 = "Hello";
+// print foo.test1;
+
+// class Thing {
+//   getCallback() {
+//     fn localFunction() {
+//       print this;
+//     }
+
+//     return localFunction;
+//   }
+// }
+// var callback = new Thing().getCallback();
+// callback();
