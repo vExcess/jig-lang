@@ -120,33 +120,111 @@
 //   showA();
 // }
 
-class Breakfast {
-  new() {
-    print("hello")
-  }
+// class Breakfast {
+//     new() {
+//         print("Breakfast created!")
+//         return
+//     }
 
-  cook() {
-    print "Eggs a-fryin'!";
-  }
-
-  // serve(who) {
-  //   print "Enjoy your breakfast, " + who + ".";
-  // }
-}
-print Breakfast
-print Breakfast.new
-var foo = new Breakfast()
+//     cook() {
+//         print("Cooking: " + this.whatToCook);
+//     }
+// }
+// print Breakfast
+// print Breakfast.new
+// var foo = new Breakfast()
+// foo.whatToCook = "bacon";
 // print(foo)
-foo.cook()
-// foo.test1 = "Hello";
-// print foo.test1;
+// foo.cook()
+// var cook = foo.cook;
+// cook(foo);
+
+// class Thing {
+//     static foo(num) {
+//         print(num)
+//         Thing.pfoo1(num)
+//         Thing.pfoo2(num)
+//     }
+//     static private pfoo1(num) {
+//         print(num)
+//     }
+//     private static pfoo2(num) {
+//         print(num)
+//     }
+
+//     bar() {
+//         print(this.value)
+//         this.pbar()
+//     }
+//     private pbar() {
+//         print(this.value)
+//     }
+// }
+// var thing = new Thing()
+// thing.value = 999
+// Thing.foo(123)
+// thing.bar()
+
+// class Doughnut {
+//     cook() {
+//         print "Fry until golden brown.";
+//     }
+// }
+// class BostonCream extends Doughnut {
+    
+// }
+// var donut = new BostonCream();
+// donut.cook();
+
+// class Doughnut {
+//     cook() {
+//         print "Fry until golden brown.";
+//     }
+// }
+// class BostonCream extends Doughnut {
+//     cook() {
+//         print "overide.";
+//     }
+// }
+// var donut = new BostonCream();
+// donut.cook();
+
+class Parent {
+    new() {
+        print("init parent");
+    }
+    cook() {
+        print "cook parent";
+    }
+}
+class Child extends Parent {
+    new() {
+        // super.Parent();
+        print ("init child");
+    }
+    cook() {
+        // super.Parent.cook();
+        print ("cook child");
+    }
+}
+// var child = new Child()
+// child.cook()
+new Child().cook()
+
+// class Box {}
+// fn notMethod(argument) {
+//     print "called function with " + argument;
+// }
+// var box = new Box();
+// box.function = notMethod;
+// print box.function
+// box.function("asdfasdf");
 
 // class Thing {
 //   getCallback() {
 //     fn localFunction() {
 //       print this;
 //     }
-
 //     return localFunction;
 //   }
 // }

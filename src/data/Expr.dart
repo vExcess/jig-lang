@@ -51,14 +51,28 @@ class CallExpr extends Expr {
 }
 
 class FunctionExpr extends Expr {
+    FunctionType kind;
+    bool isPrivate;
     Token name;
     List<Token> params;
     List<Stmt> body;
-    FunctionExpr(this.name, this.params, this.body);
+    FunctionExpr(this.kind, this.name, this.params, this.body, [this.isPrivate=false]);
 }
 
 class MemberExpr extends Expr {
     Expr object;
     Token propertyToken;
     MemberExpr(this.object, this.propertyToken);
+}
+
+class NewExpr extends Expr {
+    Expr callee;
+    List<Expr> arguments;
+    NewExpr(this.callee, this.arguments);
+}
+
+class SuperExpr extends Expr {
+    Token token;
+    Token parentName;
+    SuperExpr(this.token, this.parentName);
 }

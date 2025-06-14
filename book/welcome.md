@@ -13,7 +13,7 @@ casting numbers.
 Jig's core philosophy is to cater to multiple programming styles by offering 
 the best of both worlds. It offers static typing and dynamic typing, simplicity 
 and speed, garbage collection and no garbage collection, JIT compilation and AOT 
-compilation, procedural programming and OOP, semicolons and no semicolons, and more.
+compilation, semicolons and no semicolons, and more.
 
 ## Garbage Collection
 Jig is garbage collected by default, but when necessary the `nogc` keyword can be used to give the programmer manual control over memory using the `new` and `free` keywords for maximum performance.

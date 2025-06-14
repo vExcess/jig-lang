@@ -10,16 +10,12 @@ import '../data/Expr.dart';
 import '../data/Stmt.dart';
 import '../lib/Stack.dart';
 
-enum FunctionType {
-    NONE,
-    FUNCTION,
-    METHOD
-}
-
 class Resolver {
     // will break if code has more than 64 levels of nesting
     Stack<Map<String, bool>> scopes = new Stack(64);
+
     FunctionType currentFunction = FunctionType.NONE;
+    ClassType currentClass = ClassType.NONE;
 
     late Map<Expr, int> locals;
     late List<String> errors;
@@ -107,7 +103,9 @@ class Resolver {
 
         if (stmt is ReturnStmt) {
             if (currentFunction == FunctionType.NONE) {
-                throw "Can't return from top-level code at ${stmt}";
+                error("Can't return from top-level code at ${stmt}");
+            } else if (currentFunction == FunctionType.INITIALIZER && stmt.value != null) {
+                error("Can't return a value from an initializer ${stmt}");
             }
 
             if (stmt.value != null) {
@@ -119,12 +117,29 @@ class Resolver {
             declare(stmt.name);
             define(stmt.name);
 
+            for (VariableExpr parent in stmt.parents) {
+                if (parent.nameToken.lexeme == stmt.name.lexeme) {
+                    error("A class can't inherit from itself");
+                }
+                resolveExpr(parent);
+            }
+
             beginScope();
             scopes.peek()["this"] = true;
+            if (stmt.parents.isNotEmpty) {
+                scopes.peek()["super"] = true;
+            }
 
             for (FunctionExpr method in stmt.methods) {
-                FunctionType declaration = FunctionType.METHOD;
-                resolveFunction(method, declaration); 
+                final declaration = method.name.lexeme == "new" ? FunctionType.INITIALIZER : FunctionType.METHOD;
+
+                // set in "class" environment for methods that have a this parameter
+                ClassType enclosingClass = currentClass;
+                if (method.params[0].lexeme == "this") {
+                    currentClass = ClassType.CLASS;
+                }
+                resolveFunction(method, declaration);
+                currentClass = enclosingClass;
             }
 
             endScope();
@@ -152,8 +167,15 @@ class Resolver {
             }
         }
 
-        if (expr is ThisExpr) {
-            resolveLocal(expr, expr.token);
+        if (expr is NewExpr) {
+            resolveExpr(expr.callee);
+            for (Expr argument in expr.arguments) {
+                resolveExpr(argument);
+            }
+        }
+
+        if (expr is SuperExpr) {
+            resolveLocal(expr, expr.parentName);
         }
 
         if (expr is MemberExpr) {
@@ -165,6 +187,10 @@ class Resolver {
         }
 
         if (expr is VariableExpr) {
+            if (currentClass == ClassType.NONE && expr.nameToken.lexeme == "this") {
+                error("Can't use 'this' outside of class methods ${expr.nameToken}");
+                return;
+            }
             resolveLocal(expr, expr.nameToken);
         }
 

@@ -72,6 +72,7 @@ enum TokenType {
     STRUCT,
     CLASS,
     STATIC,
+    PRIVATE,
     SUPER,
     EXTENDS,
     INHERIT,
@@ -84,7 +85,6 @@ enum TokenType {
     BREAK,
     CONTINUE,
     NEW,
-    THIS,
     TRUE,
     FALSE,
     INFINITY,
@@ -120,4 +120,16 @@ class Token {
     String toString([bool hideLinePos=false]) {
         return "Token(${tokType.toString().substring("TokenType.".length)} `${lexeme}`${hideLinePos ? "" : " ${start},${line}"})";
     }
+}
+
+enum FunctionType {
+    NONE,
+    FUNCTION,
+    METHOD,
+    INITIALIZER
+}
+
+enum ClassType {
+    NONE,
+    CLASS
 }

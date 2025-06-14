@@ -12,7 +12,7 @@ casting numbers.
 Jig's core philosophy is to cater to multiple programming styles by offering 
 the best of both worlds. It offers static typing and dynamic typing, simplicity 
 and speed, garbage collection and no garbage collection, JIT compilation and AOT 
-compilation, procedural programming and OOP, semicolons and no semicolons, and more.
+compilation, semicolons and no semicolons, and more.
 
 ## Learn Jig
 Read the book here:  

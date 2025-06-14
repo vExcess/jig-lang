@@ -51,8 +51,9 @@ class JigObject {
             return fields[key]!;
         }
 
-        if (jClass.methods.containsKey(key)) {
-            return new IValue(IType.Function, jClass.methods[key]!);
+        JigFunction? methodLookup = jClass.getMethod(key);
+        if (methodLookup != null) {
+            return new IValue(IType.Function, methodLookup);
         }
 
         throw "Undefined property '${key}'.";
@@ -80,24 +81,30 @@ class JigFunction {
         }
     }
 
-    IValue call(Interpreter interpreter, List<IValue> arguments) {
+    IValue call(Interpreter interpreter, List<IValue> arguments, [bool isConstructor=false]) {
         if (jigFn != null) {
             Environment environment = new Environment(closure);
+            
             for (int i = 0; i < jigFn!.params.length; i++) {
                 environment.define(
                     jigFn!.params[i].lexeme,
                     arguments[i]
                 );
             }
+
             IValue? res = interpreter.executeInNewScope(jigFn!.body, environment);
+            
+            // return "this" in constructors
+            if (isConstructor) {
+                return environment.values["this"]!;
+            }
+
+            // return returned value in functions
             if (res != null) {
                 return res;
             }
-            
-            if (jigFn!.name.lexeme == "new") {
 
-            }
-
+            // return null otherwise
             return new IValue(IType.Null, 0);
         } else {
             return nativeFn!(interpreter, arguments);
@@ -106,7 +113,7 @@ class JigFunction {
 
     String toString() {
         if (jigFn != null) {
-            return "<fn ${jigFn!.name.lexeme}()>";
+            return "<fn ${jigFn!.name.lexeme}(${jigFn!.params.map((tok) { return tok.lexeme; }).join(", ")})>";
         } else {
             return "<fn native code>";
         }
@@ -115,16 +122,24 @@ class JigFunction {
 
 class JigClass {
     String name;
+    List<JigClass> parents;
     Map<String, JigFunction> methods;
 
-    JigClass(this.name, this.methods);
+    JigClass(this.name, this.parents, this.methods);
     
-    JigFunction getMethod(String key) {
+    JigFunction? getMethod(String key) {
         if (methods.containsKey(key)) {
             return methods[key]!;
         }
 
-        throw "Undefined property '${key}'.";
+        for (JigClass parent in parents) {
+            final parentMethodLookup = parent.getMethod(key);
+            if (parentMethodLookup != null) {
+                return parentMethodLookup;
+            }
+        }
+
+        return null;
     }
 
     String toString() {
@@ -132,11 +147,21 @@ class JigClass {
     }
 }
 
+JigClass ObjectClass = new JigClass("Object", [], {});
+
 class Environment {
     Environment? parent = null;
     Map<String, IValue?> values = {};
 
     Environment([this.parent]);
+
+    Environment getNthParent(int dist) {
+        Environment environment = this;
+        for (int i = 0; i < dist; i++) {
+            environment = environment.parent!; 
+        }
+        return environment;
+    }
 
     IValue? get(String name) {
         if (values.containsKey(name)) {
@@ -173,6 +198,18 @@ class Interpreter {
     late Environment environment;
     late Map<Expr, int> locals;
 
+    bool _debugMode = true;
+    List<String> _debugStack = [];
+    void debugPush(String exprType) {
+        if (_debugMode) {
+            _debugStack.add(exprType);
+            print(_debugStack);
+        }
+    }
+    void debugPop() {
+        if (_debugMode) _debugStack.removeLast();
+    }
+
     Interpreter() {
         this.environment = globals;
 
@@ -187,65 +224,129 @@ class Interpreter {
 
     bool hadRuntimeError = false;
 
-    IValue evaluate(Expr expr) {
+    IValue evaluate(Expr expr) {        
         if (expr is LiteralExpr) {
+            debugPush("LiteralExpr");
             final tok = expr.token;
             if (tok.tokType == TokenType.NULL) {
-                return IValue(IType.Null, 0);
+                final output = IValue(IType.Null, 0);
+                debugPop();
+                return output;
             }
             if (tok.tokType == TokenType.NUMBER) {
-                return IValue(IType.Double, double.parse(tok.lexeme));
+                final output = IValue(IType.Double, double.parse(tok.lexeme));
+                debugPop();
+                return output;
             }
             if (tok.tokType == TokenType.STRING) {
-                return IValue(IType.String, tok.lexeme.substring(1, tok.lexeme.length - 1));
+                final output = IValue(IType.String, tok.lexeme.substring(1, tok.lexeme.length - 1));
+                debugPop();
+                return output;
             }
             if (tok.lexeme == "true") {
-                return IValue(IType.Bool, true);
+                final output = IValue(IType.Bool, true);
+                debugPop();
+                return output;
             }
             if (tok.lexeme == "false") {
-                return IValue(IType.Bool, false);
+                final output = IValue(IType.Bool, false);
+                debugPop();
+                return output;
             }
+            throw "UNREACHABLE - unknown literal";
         }
 
         if (expr is BinaryExpr) {
-            return visitBinaryExpr(expr);
+            debugPush("BinaryExpr");
+            final output = visitBinaryExpr(expr);
+            debugPop();
+            return output;
         }
 
         if (expr is GroupingExpr) {
-            return evaluate(expr.expression);
+            debugPush("GroupingExpr");
+            final output = evaluate(expr.expression);
+            debugPop();
+            return output;
         }
 
         if (expr is CallExpr) {
+            debugPush("CallExpr");
             IValue callee = evaluate(expr.callee);
+            final func = callee.value as JigFunction;
 
             List<IValue> arguments = [];
+            
+            // handle this for method calls
+            final jigFn = func.jigFn;
+            if (jigFn != null && jigFn.params.isNotEmpty && jigFn.params[0].lexeme == "this" && expr.callee is MemberExpr) {
+                final calleeExpr = expr.callee as MemberExpr;
+                IValue thisObject = evaluate(calleeExpr.object);
+                arguments.add(thisObject);
+            }
+            
             for (Expr argument in expr.orderedArguments) { 
                 arguments.add(evaluate(argument));
             }
 
-            final func = callee.value as JigFunction;
             // TODO: check arity
+            debugPop();
             return func.call(this, arguments);
         }
 
+        if (expr is NewExpr) {
+            debugPush("NewExpr");
+            IValue callee = evaluate(expr.callee);
+            print("EAVAL CALLEEE");
+            
+            if (callee.type == IType.Class) {
+                final classToNew = callee.value as JigClass;
+                final newObject = new IValue(IType.Object, new JigObject(classToNew));
+
+                List<IValue> arguments = [newObject];
+                for (Expr argument in expr.arguments) {
+                    arguments.add(evaluate(argument));
+                }
+
+                JigFunction? func = classToNew.getMethod("new");
+                // TODO: check arity
+                debugPop();
+                return func!.call(this, arguments, true);
+            }
+
+            throw "Only classes can be instantiated";
+        }
+
         if (expr is MemberExpr) {
+            debugPush("MemberExpr");
             IValue object = evaluate(expr.object);
             if (object.type == IType.Object) {
-                return (object as JigObject).get(expr.propertyToken.lexeme);
+                debugPop();
+                return (object.value as JigObject).get(expr.propertyToken.lexeme);
             } else if (object.type == IType.Class) {
-                return new IValue(IType.Function, (object.value as JigClass).getMethod(expr.propertyToken.lexeme));
+                // resolve static methods
+                final jClass = (object.value as JigClass);
+                final methodLookup = jClass.getMethod(expr.propertyToken.lexeme);
+                if (methodLookup == null) {
+                    throw "unable to resolve method ${expr.propertyToken.lexeme} on ${jClass.name}";
+                }
+                debugPop();
+                return new IValue(IType.Function, methodLookup);
             }
             throw "Only objects have properties ${expr}.";
         }
 
         if (expr is UnaryExpr) {
+            debugPush("UnaryExpr");
             IValue right = evaluate(expr.right);
 
             switch (expr.operator.tokType) {
                 case TokenType.BANG:
+                    debugPop();
                     return IValue(right.type, !isTruthy(right));
                 case TokenType.MINUS:
                     checkNumberOperand(expr.operator, right);
+                    debugPop();
                     return IValue(right.type, -(right.value as double));
                 default:
 
@@ -255,24 +356,25 @@ class Interpreter {
         }
 
         if (expr is VariableExpr) {
+            debugPush("VariableExpr");
             final varName = expr.nameToken.lexeme;
             int? distance = locals[expr];
             if (distance != null) {
-                Environment environment = this.environment;
-                for (int i = 0; i < distance; i++) {
-                    environment = environment.parent!; 
-                }
+                Environment environment = this.environment.getNthParent(distance);
+                debugPop();
                 return environment.get(varName)!;
             } else {
                 final val = globals.get(varName);
                 if (val == null) {
                     throw "variable ${varName} must be initialized before use";
                 }
+                debugPop();
                 return val;
             }
         }
 
         if (expr is AssignmentExpr) {
+            debugPush("AssignmentExpr");
             final left = expr.left;
             final right = expr.right;
 
@@ -282,16 +384,13 @@ class Interpreter {
                 final varName = left.nameToken.lexeme;
                 int? distance = locals[expr];
                 if (distance != null) {
-                    Environment environment = this.environment;
-                    for (int i = 0; i < distance; i++) {
-                        environment = environment.parent!; 
-                    }
+                    Environment environment = this.environment.getNthParent(distance);
                     environment.values[varName] = value;
                 } else {
                     globals.set(varName, value);
                 }
             } else if (left is MemberExpr) {
-                IValue object = evaluate(expr.left);
+                IValue object = evaluate(left.object);
                 if (object.type != IType.Object) {
                     // TODO: implement class modifying
                     throw "Only instances have fields. ${expr}";
@@ -299,15 +398,31 @@ class Interpreter {
                 (object.value as JigObject).set(left.propertyToken.lexeme, value);
             }
 
+            debugPop();
             return value;
         }
 
+        if (expr is SuperExpr) {
+            debugPush("SuperExpr");
+            int distance = locals[expr]!;
+            Environment environment = this.environment.getNthParent(distance);
+            final superObject = environment.get("super")!.value as JigObject;
+            final superClass = superObject.fields[expr.parentName.lexeme];
+            if (superClass == null) {
+                throw "unreachable (probably)";
+            }
+            debugPop();
+            return superClass;
+        }
+
         if (expr is FunctionExpr) {
+            debugPush("FunctionExpr");
             JigFunction func = new JigFunction(expr, new Environment(environment));
+            debugPop();
             return new IValue(IType.Function, func);
         }
 
-        throw "unreachable Expression ${expr.toString()}";
+        throw "UNREACHABLE - unknown expression ${expr}";
     }
 
     IValue? executeInNewScope(List<Stmt> statements, Environment environment) {
@@ -329,6 +444,7 @@ class Interpreter {
 
     IValue? executeStatement(Stmt stmt) {
         if (stmt is ExpressionStmt) {
+            debugPush("ExpressionStmt");
             if (stmt.expr is FunctionExpr) {
                 final expr = stmt.expr as FunctionExpr;
                 JigFunction func = new JigFunction(expr, new Environment(environment));
@@ -336,10 +452,12 @@ class Interpreter {
             } else {
                 evaluate(stmt.expr);
             }
+            debugPop();
             return null;
         }
 
         if (stmt is IfStmt) {
+            debugPush("IfStmt");
             IValue? res;
             if (isTruthy(evaluate(stmt.condition))) {
                 res = executeStatement(stmt.thenBranch);
@@ -347,66 +465,104 @@ class Interpreter {
                 res = executeStatement(stmt.elseBranch!);
             }
             if (res != null) {
+                debugPop();
                 return res;
             }
+            debugPop();
             return null;
         }
 
         if (stmt is WhileStmt) {
+            debugPush("WhileStmt");
             IValue? res;
             while (isTruthy(evaluate(stmt.condition))) {
                 res = executeStatement(stmt.body);
                 if (res != null) {
+                    debugPop();
                     return res;
                 }
             }
+            debugPop();
             return null; 
         }
 
         if (stmt is BlockStmt) {
+            debugPush("BlockStmt");
             IValue? res = executeInNewScope(stmt.stmts, new Environment(environment));
             if (res != null) {
+                debugPop();
                 return res;
             }
+            debugPop();
             return null;
         }
 
         if (stmt is PrintStmt) {
+            debugPush("PrintStmt");
             IValue value = evaluate(stmt.expr);
             print(value.toString());
+            debugPop();
             return null;
         }
 
         if (stmt is VariableStmt) {
+            debugPush("VariableStmt");
             IValue? value = null;
             if (stmt.expr != null) {
                 value = evaluate(stmt.expr!);
             }
             environment.define(stmt.name.lexeme, value);
+            debugPop();
             return null;
         }
 
         if (stmt is ReturnStmt) {
+            debugPush("ReturnStmt");
             if (stmt.value != null) {
+                debugPop();
                 return evaluate(stmt.value!);
             } else {
+                debugPop();
                 return IValue(IType.Null, 0);
             }
         }
 
         if (stmt is ClassStmt) {
-            environment.define(stmt.name.lexeme, null);
+            debugPush("ClassStmt");
+            List<JigClass> parentClasses = [];
+            for (VariableExpr parent in stmt.parents) {
+                IValue parentClass = evaluate(parent);
+                if (parentClass.type != IType.Class) {
+                    throw "Superclass must be a class. ${parent.nameToken}";
+                }
+                parentClasses.add(parentClass.value as JigClass);
+            }
+
+            final jClassName = stmt.name.lexeme;
+            environment.define(jClassName, null);
+
+            // define super 
+            if (stmt.parents.isNotEmpty) {
+                final superObject = new JigObject(ObjectClass);
+                for (final parentClass in parentClasses) {
+                    superObject.fields[parentClass.name] = new IValue(IType.Class, parentClass);
+                }
+                environment.define("super", new IValue(IType.Object, superObject));
+            }
 
             Map<String, JigFunction> methods = {};
             for (FunctionExpr expr in stmt.methods) {
                 methods[expr.name.lexeme] = new JigFunction(expr, environment);
             }
 
-            final jClass = new JigClass(stmt.name.lexeme, methods);
-            environment.set(stmt.name.lexeme, new IValue(IType.Class, jClass));
+            final jClass = new JigClass(jClassName, parentClasses, methods);
+            environment.set(jClassName, new IValue(IType.Class, jClass));
+
+            debugPop();
+            return null;
         } 
 
-        return null;
+        throw "UNREACHABLE - unknown statement ${stmt}";
     }
 
     IValue visitBinaryExpr(BinaryExpr expr) {

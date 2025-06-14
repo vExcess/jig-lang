@@ -2,7 +2,8 @@ import 'dart:io';
 import 'interpreter/interpreter.dart';
 import 'parser/tokenizer.dart';
 import 'parser/parser.dart';
-import 'ast-printer.dart';
+import 'tool/Formatter.dart';
+import 'tool/Serializer.dart';
 
 void main() {
     String src = File("./thing.jig").readAsStringSync();
@@ -16,8 +17,8 @@ void main() {
     var parser = Parser(tokens);
     var ast = parser.parse();
 
-    var astPrinter = ASTPrinter(src);
-    astPrinter.printAST(ast);
+    print(Serializer.stringFromJSON(Serializer.jsonifyAST(ast)));
+    print(Formatter.formatAST(ast));
 
     var interpreter = Interpreter();
     print("==========");

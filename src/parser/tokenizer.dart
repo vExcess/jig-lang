@@ -30,7 +30,6 @@ Map<String, TokenType> ReservedWordTokenType = {
     "break": TokenType.BREAK,
     "continue": TokenType.CONTINUE,
     "new": TokenType.NEW,
-    "this": TokenType.THIS,
     "true": TokenType.TRUE,
     "false": TokenType.FALSE,
     "Infinity": TokenType.INFINITY,
@@ -171,7 +170,7 @@ class Tokenizer {
         final startIdx = Math.min(this.source.length - 1, this.lexemeStart + startOffset);
         final endIdx = Math.min(this.source.length - 1, startIdx + rest.length);
         var slc = this.source.substring(startIdx, endIdx);
-        return slc == rest;
+        return slc == rest && this.source[endIdx] == ' ';
     }
 
     TokenType identifierType()  {
@@ -206,6 +205,9 @@ class Tokenizer {
                 }
                 if (this.checkKeyword(1, "xport")) {
                     return TokenType.EXPORT;
+                }
+                if (this.checkKeyword(1, "xtends")) {
+                    return TokenType.EXTENDS;
                 }
                 if (this.checkKeyword(1, "num")) {
                     return TokenType.ENUM;
@@ -279,6 +281,9 @@ class Tokenizer {
                 if (this.checkKeyword(1, "rint")) {
                     return TokenType.PRINT;
                 }
+                if (this.checkKeyword(1, "rivate")) {
+                    return TokenType.PRIVATE;
+                }
             }
             case 'r': {
                 if (this.checkKeyword(1, "eturn")) {
@@ -304,7 +309,7 @@ class Tokenizer {
                     switch (this.source[this.lexemeStart + 1]) {
                         case 'h': {
                             if (this.checkKeyword(2, "is")) {
-                                return TokenType.THIS;
+                                return TokenType.IDENTIFIER;
                             }
                         }
                         case 'r': {

@@ -1,4 +1,40 @@
 # Classes
+Jig is not an object oriented programming language. As such classes in Jig behave differently than classes in other languages according to the following notes.
+
+## Note on private
+The `private` keyword actually doesn't do anything at runtime. It exists purely for documentation and linting purposes.
+
+## Note on top level field initializers
+Top level field initializers just get copied down into the top of the class's constructor at compile time. 
+
+## Note on parent class constructors
+A parent class's constructor is not called automatically at the top of the child's constructor.
+
+## Note on constructors
+A class can't have multiple constructors
+
+## Note on tear offs
+For performance and implementation reasons, methods of Jig classes are not bound to an instance of that classes. This means the following is NOT allowed
+```ts
+class Person {
+    name: String;
+    new(this.name);
+    sayHi() {
+        println(name);
+    }
+}
+
+var tim = new Person("Tim");
+var timSayHi = tim.sayHi;
+timSayHi(); // prints out "Tim"
+```
+Instead you can do
+```ts
+var timSayHi = () => { tim.sayHi() };
+timSayHi(); // prints out "Tim"
+```
+
+## Classes
 Classes are created like so:
 ```ts
 class Animal {
@@ -22,9 +58,6 @@ class Animal {
     }
 }
 ```
-
-## Note on private
-The `private` keyword actually doesn't do anything at runtime. It exists purely for documentation and linting purposes.
 
 ## Constructor and Destructor
 The constructor of a class is written as a method using `new` as an identifier. The destructor of a class is written using `free` as an identifier. Using the `free` keyword like so `free someInstance` on an instance will call the instance's `free` method if it exists and then deallocate the object from memory. When the garbage collector deallocates an object its free method is not called. Calling a object's free method does not deallocate the object from memory. Calling `myClass().new()` is the same as `new myClass()`. By default properties/methods are public, but can be made private using the `private` keyword. You can shorthand initializing properties of the class in the constructor by using `this.propertyName` in the parameters of the constructor.
@@ -115,36 +148,6 @@ class Child {
 }
 ```
 A class can be created without a constructor. This simply defaults to an empty constructor that accepts no arguments being implicitly created.
-
-## No tear offs
-Unlike "real" classes, for performance and implementation reasons, methods of Jig classes are not bound to an instance of that classes. This means the following is NOT allowed
-```ts
-class Person {
-    name: String;
-    new(this.name);
-    sayHi() {
-        println(name);
-    }
-}
-
-var tim = Person("Tim");
-var timSayHi = tim.sayHi;
-timSayHi(); // prints out "Tim"
-```
-Instead you must do 
-```ts
-class Person {
-    name: String;
-    new(this.name);
-    sayHi() {
-        println(name);
-    }
-}
-
-var tim = Person("Tim");
-var timSayHi = () => { tim.sayHi() };
-timSayHi(); // prints out "Tim"
-```
 
 ## Operator Overloading
 Operator overloading on classes is done by adding the operator symbol as the identifier of a method on the class. It will accept one value as an argument which will be the value that is being operated on with the instance.

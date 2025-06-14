@@ -159,16 +159,66 @@ class Parser {
 
         if (match([TokenType.CLASS])) {
             Token name = consume(TokenType.IDENTIFIER, "Expect class name.");
+
+            List<VariableExpr> parents = [];
+            if (match([TokenType.EXTENDS])) {
+                while (check(TokenType.IDENTIFIER)) {
+                    final parentNameToken = consume(TokenType.IDENTIFIER, "Expect parent class name");
+                    parents.add(new VariableExpr(parentNameToken));
+                    match([TokenType.COMMA]);
+                }
+            }
+
             consume(TokenType.BRACE_LEFT, "Expect '{' before class body.");
 
+            bool hasConstructor = false;
             List<FunctionExpr> methods = [];
             while (!check(TokenType.BRACE_RIGHT) && !isAtEnd()) {
-                methods.add(func("method"));
+                // parse modifiers
+                FunctionType kind = FunctionType.METHOD;
+                bool isPrivate = false;
+                while (match([TokenType.STATIC, TokenType.PRIVATE])) {
+                    switch (previous().tokType) {
+                        case TokenType.STATIC: {
+                            if (kind == FunctionType.FUNCTION) {
+                                error(previous(), "Duplicate static modifier on method");
+                            }
+                            kind = FunctionType.FUNCTION;
+                        }
+                        case TokenType.PRIVATE: {
+                            if (isPrivate) {
+                                error(previous(), "Duplicate private modifier on method");
+                            }
+                            isPrivate = true;
+                        }
+                        default:
+                    }                    
+                }
+
+                // parse method
+                FunctionExpr method = func(kind);
+                if (isPrivate) {
+                    method.isPrivate = true;
+                }
+                if (method.name.lexeme == "new") {
+                    hasConstructor = true;
+                }
+                methods.add(method);
+            }
+
+            // create "default" constructor if it's not defined by user
+            if (!hasConstructor) {
+                methods.add(FunctionExpr(
+                    FunctionType.METHOD,
+                    new Token(TokenType.IDENTIFIER, -1, "new", -1),
+                    [new Token(TokenType.IDENTIFIER, -1, "this", -1)],
+                    []
+                ));
             }
 
             consume(TokenType.BRACE_RIGHT, "Expect '}' after class body.");
 
-            return new ClassStmt(name, methods);
+            return new ClassStmt(name, parents, methods);
         }
 
         return new ExpressionStmt(expression());
@@ -361,40 +411,62 @@ class Parser {
             return new VariableExpr(previous());
         }
 
-        if (match([TokenType.THIS])) {
-            return new ThisExpr(previous());
-        }
-
         if (match([TokenType.PAREN_LEFT])) {
             Expr expr = expression();
             consume(TokenType.PAREN_RIGHT, "Expect ')' after expression.");
             return new GroupingExpr(expr);
         }
 
-        if (check(TokenType.NEW)) {
-            final newToken = advance();
-            Expr constructorExpr = primary();
-            return new MemberExpr(constructorExpr, newToken);
+        if (match([TokenType.NEW])) {
+            Expr callee = primary();
+
+            List<Expr> arguments = [];
+            consume(TokenType.PAREN_LEFT, "Expect '(' after new expression");
+
+            if (!check(TokenType.PAREN_RIGHT)) {
+                do {
+                    // limit is 254 to account for "this" argument
+                    if (arguments.length >= 255) {
+                        error(peek(), "Can't have more than 255 arguments.");
+                    }
+                    arguments.add(expression());
+                } while (match([TokenType.COMMA]));
+            }
+
+            Token paren = consume(TokenType.PAREN_RIGHT, "Expect ')' after arguments.");
+
+            return new NewExpr(callee, arguments);
         }
 
+        if (match([TokenType.SUPER])) {
+            Token keyword = previous();
+            consume(TokenType.DOT, "Expect '.' after 'super'.");
+            Token method = consume(TokenType.IDENTIFIER, "Expect superclass method name.");
+            return new SuperExpr(keyword, method);
+        }
+
+
         if (match([TokenType.FN])) {
-            return func("function");
+            return func(FunctionType.FUNCTION);
         }
 
         throw (peek(), "err in primary");
     }
 
-    FunctionExpr func(String kind) {
+    FunctionExpr func(FunctionType kind) {
         Token name;
-        if (kind == "method" && check(TokenType.NEW)) {
+        if (kind == FunctionType.METHOD && check(TokenType.NEW)) {
             name = advance();
             name.tokType = TokenType.IDENTIFIER;
         } else {
-            name = consume(TokenType.IDENTIFIER, "Expect ${kind} name.");
+            name = consume(TokenType.IDENTIFIER, "Expect function name.");
         }
         
-        consume(TokenType.PAREN_LEFT, "Expect '(' after " + kind + " name.");
+        consume(TokenType.PAREN_LEFT, "Expect '(' after function name.");
         List<Token> parameters = [];
+        if (kind == FunctionType.METHOD) {
+            parameters.add(new Token(TokenType.IDENTIFIER, -1, "this", -1));
+        }
         if (!check(TokenType.PAREN_RIGHT)) {
             do {
                 // limit is 254 for "this" argument
@@ -406,9 +478,9 @@ class Parser {
         }
         consume(TokenType.PAREN_RIGHT, "Expect ')' after parameters.");
         
-        consume(TokenType.BRACE_LEFT, "Expect '{' before " + kind + " body.");
+        consume(TokenType.BRACE_LEFT, "Expect '{' before function body.");
         List<Stmt> body = block();
-        return new FunctionExpr(name, parameters, body);
+        return new FunctionExpr(kind, name, parameters, body);
     }
 
     String getLexemes() {
